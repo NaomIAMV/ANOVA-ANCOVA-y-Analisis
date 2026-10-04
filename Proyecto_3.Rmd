@@ -1,0 +1,506 @@
+---
+title: "ANOVA, ANCOVA y análisis de interacciones en R"
+subtitle: "Dos aplicaciones de modelos lineales a datos de tratamientos"
+author:
+  - "Monsalvo Velázquez Naomi Adai"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: false
+    latex_engine: pdflatex
+    highlight: tango
+geometry: margin=2.1cm
+fontsize: 10pt
+header-includes:
+  - \usepackage{longtable}
+  - \usepackage{booktabs}
+  - \usepackage{array}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  comment = NA,
+  fig.align = "center",
+  fig.width = 7.2,
+  fig.height = 4.5,
+  out.width = "95%"
+)
+```
+
+
+# Caso 1. Comparación de tratamientos y diferencias por sexo (ANOVA e interacciones)
+
+```{r bloque-01, results="hide"}
+rm(list = ls(all.names = TRUE))
+gc()
+
+```
+
+> Cargamos la base de datos
+
+```{r bloque-02}
+datos <- read.csv("Tar2-4A.csv")
+
+datos$Trat <- as.factor(datos$Trat)
+datos$Trat <- relevel(datos$Trat, ref = "Control")
+datos$Sexo <- as.factor(datos$Sexo)
+datos$Sexo <- relevel(datos$Sexo, ref = "Hombre")
+
+```
+
+## i. Análisis descriptivo
+
+> i.  Realice un análisis descriptivo de los datos
+
+```{r bloque-03}
+colores_trat <- c("lightblue", "lightblue", "lightgreen", "lightgreen", "lightpink", "lightpink")
+
+boxplot(Puntaje ~ Sexo + Trat, data = datos,
+        col = colores_trat,
+        main = "Puntaje de Ansiedad x Tratamiento y Sexo",
+        xlab = "Tratamiento",
+        ylab = "Puntaje de Ansiedad")
+
+```
+
+> Observando nuestra gráfica boxplot, notamos que los individuos en el
+> grupo control son los que presentan los niveles más altos de ansiedad
+> pues su mediana esta entre un puntaje de 12, esto tanto para hombres
+> como para mujeres Por otro lado notamos que los grupos que recibieron
+> tratamiento, el puntaje de ansiedad cambia con respecto al sexo del
+> individuo,pues en el tratamiento 1 vemos que logra el puntaje mas bajo
+> de ansiedad(mediana de casi 7) comparando tanto con el grupo control
+> como con los hombres que recibieron el tratamiento 2, sin embargo a
+> comparacion con las mujeres a las que se les aplico el mismo
+> tratamiento los niveles son más altos(mediana de casi 9), es más
+> notamos que las mujeres con el tratamiento 1 presentan mayor puntaje
+> de ansiedad que los hombres con el tratamiento 2, pero menos que las
+> mujeres a las que se les aplico el tratamiento 2. Por lo que podemos
+> decir que al aplicar el tratamiento 1 los puntajes de ansiedad son
+> menores tanto en hombres como en mujeres
+
+## ii. Modelo con variables categóricas e interacción
+
+> ii. Considerando un modelo de regresión que incluye las dos variables
+>     categóricas de forma individual y también su interacción, dé la
+>     expresión del puntaje promedio para cada valor de las variables
+>     categóricas
+
+```{r bloque-04}
+fit <- lm(Puntaje ~ Trat * Sexo, data = datos)
+summary(fit)
+
+```
+
+> Definimos nuestras variables binarias como: x1 = 1 si es Trat1, 0 en
+> otro caso x2 = 1 si es Trat2, 0 eoc x3 = 1 si es Mujer, 0 eoc Por lo
+> tanto nuestro modelo de regresión es: y = beta_0 + beta_1*x1 +
+> beta_2*x2 + beta_3*x3 + beta_4*(x1*x3) + beta_5*(x2\*x3) + error
+>
+> A partir de esto, las expresiones para el puntaje de ansiedad promedio
+> E(puntaje \| Trat=k, Sexo=l) son: E(Control, Hombre) = beta_0 E(Trat1,
+> Hombre) = beta_0 + beta_1 E(Trat2, Hombre) = beta_0 + beta_2
+> E(Control, Mujer) = beta_0 + beta_3 E(Trat1, Mujer) = beta_0 +
+> beta_1 + beta_3 + beta_4 E(Trat2, Mujer) = beta_0 + beta_2 + beta_3 +
+> beta_5
+>
+> Asi de los valores que obtuvimos: beta_0 (Intercept): 12.3482 beta_1
+> (Trat1): -5.7357 beta_2 (Trat2): -4.2720 beta_3 (Mujer): -0.2334
+> beta_4 (Trat1:Mujer): 2.2267 beta_5 (Trat2:Mujer): 2.0150 Y la
+> estimacion puntual queda como: -E(Control, Hombre) = beta_0= 12.3482
+> -E(Trat1, Hombre) = beta_0 + beta_1= 12.3482 + (-5.7357) = 6.6125
+> -E(Trat2, Hombre) = beta_0 + beta_2= 12.3482 + (-4.2720) = 8.0762
+> -E(Control, Mujer) = beta_0 + beta_3=12.3482 + (-0.2334) = 12.1148
+> -E(Trat1, Mujer) = beta_0 + beta_1 + beta_3 + beta_4= 12.3482 +
+> (-5.7357) + (-0.2334) + 2.2267 = 8.6058 -E(Trat2, Mujer) = beta_0 +
+> beta_2 + beta_3 + beta_5 = 12.3482 + (-4.2720) + (-0.2334) + 2.0150 =
+> 9.8578
+
+## iii. Prueba ANOVA global
+
+> iii. Escriba las hipótesis que se contrastan con la tabla ANOVA,
+>      calcule ésta e interprete. Use $\alpha$ = .05. Para obtener la
+>      tabla ANOVA que contrasta la regresión global, comparamos el
+>      modelo nulo
+
+```{r bloque-05}
+fitnulo <- lm(Puntaje ~ 1, data = datos)
+anova(fitnulo, fit)
+
+```
+
+> Las hipótesis que se contrastan con la tabla ANOVA son: H0: beta_1 =
+> beta_2 = beta_3 = beta_4 = beta_5 = 0 (El modelo no explica el puntaje
+> de ansiedad, ent el modelo nulo es suficiente) Ha: Al menos un beta_j
+> != 0 (para j=3,4,5) (El modelo sí explica el puntaje, ent las
+> covariables tienen efecto)
+>
+> Así cuando corrimos la tabla ANOVA global, omparando el modelo nulo
+> con nuestro modelo completo, obtuvimos un de F-value de = 38.051 y un
+> p-value \< 2.2e-16, por lo tanto usando el nivel de significancia alfa
+> = 0.05, como el p-value \< 0.05, RECHAZAMOS H0
+>
+> Por lo tanto conlcluimos que existe evidencia suficiente para asegurar
+> que el modelo global es significativo, es decir el tratamiento
+> recibido, el sexo del paciente o su interacción entre los dos tienen
+> un efecto significativo sobre los puntajes de ansiedad de los
+> individuos
+
+## iv. Efecto del sexo y pruebas simultáneas
+
+> iv. ¿Se puede considerar que el sexo tiene un efecto en el puntaje, es
+>     decir, al menos para un tratamiento existe un efecto diferenciado
+>     en el puntaje derivado del sexo de los individuos? Use una prueba
+>     F con $\alpha$ =.025. Interprete.
+
+```{r bloque-06}
+fit_sin_sexo <- lm(Puntaje ~ Trat, data = datos)
+anova(fit_sin_sexo, fit)
+
+```
+
+> Vamos usar el hint y a contrastar E(puntaje\|Hombre) =
+> E(puntaje\|Mujer) para todo tratamiento k con k $\in$
+> {Control,Trat1,Trat2}, asi tomando en cuenta las ecuaciones del inciso
+> ii, nos damos cuenta que los parámetros que involucran al sexo se
+> cancelen, por lo tanto las hipotesis : H0: beta_3 = beta_4 = beta_5 =
+> 0 (El sexo no tiene un efecto en el puntaje de ansiedad) Ha: Al menos
+> un beta_j != 0 (para j = 1,2,3,4,5) (el sexo si teine efecto)
+>
+> Asi notamos en la salida que el F-value es de 8.7231, con un p-value
+> de 2.942e-05,por lo que concluimos que como p-value\<0.025,RECHAZAMOS
+> H0 y decimos que es plausible decir que existe evidencia suficiente
+> para afirmar que el sexo si tiene un efecto en el puntaje de ansiedad
+> en los tratamientos aplicados
+
+```{r bloque-07}
+library(multcomp)
+```
+
+> Definimos la matriz de contrastes
+
+```{r bloque-08}
+K_sexo <- matrix(c(
+  0, 0, 0, 1, 0, 0,   # Control: beta_3 = 0
+  0, 0, 0, 1, 1, 0,   # Trat1: beta_3 + beta_4 = 0
+  0, 0, 0, 1, 0, 1    # Trat2: beta_3 + beta_5 = 0
+), nrow = 3, byrow = TRUE)
+
+prueba_sexo <- glht(fit, linfct = K_sexo)
+summary(prueba_sexo)
+```
+
+> Como rechazamos H0,entonces realizamos una prueba simultánea para
+> identificar en qué tratamientos el sexo tiene un efecto
+>
+> Es decir que - Control (H0: beta_3 = 0), ent p-value: 0.9592 NO se
+> rechaza H0 - Trat1 (H0: beta_3 + beta_4 = 0), con p-value: 0.00072 SÍ
+> se rechaza H0 - Trat2 (H0: beta_3 + beta_5 = 0)-\> p-value: 0.002839
+> SÍ se rechaza H0 De los resultados observamos que el sexo NO tiene un
+> efecto en el puntaje de ansiedad para los pacientes del grupo Control,
+> sin embargo, el sexo SI tiene un efecto para los pacientes que
+> recibieron el tratamiento 1 y el tratamiento 2
+
+## v. Expresiones y estimaciones del modelo
+
+> v.En caso de que en el inciso anterior se haya reducido el modelo,
+> ajuste de nuevo la regresión y dé la expresión del puntaje promedio
+> para cada valor en las variables categóricas: E(puntaje;Trat = k,Sexo
+> = l), con k $\in$ {Control,Trat1,Trat2} y l $\in$ {Hombre,Mujer}; así
+> como estimaciones puntuales.
+
+```{r bloque-09}
+fit_reducido <- lm(Puntaje ~ Trat + Trat:Sexo, data = datos)
+summary(fit_reducido)
+
+
+```
+
+> Dado que en el inciso anterior se ajusto el modelo,ent ajustamos de
+> nunevo la regresion el efecto principal global del Sexo y permitiendo
+> únicamente su interacción (efecto anidado)
+>
+> Asi las estimaciones puntuales de E(Puntaje \| Trat = k, Sexo = l)
+> son:
+>
+> -E(Control, Hombre) = beta_0_gorr= 12.3482 -E(Trat1, Hombre) =
+> beta_0_gorr + beta_1_gorr= 12.3482 + (-5.7357) = 6.6125 -E(Trat2,
+> Hombre) = beta_0_gorr + beta_2_gorr= 12.3482 + (-4.2720) = 8.0762
+> -E(Control, Mujer) = beta_0_gorr + beta_3_gorr=12.3482 + (-0.2334) =
+> 12.1148 Pero como beta_3_gorrito no es significativo por tener un
+> p-value = 0.6572,ent la diferencia de sexo aqui es nula -E(Trat1,
+> Mujer) = beta_0_gorr + beta_1_gorr + beta_4_gorr =12.3482 +
+> (-5.7357) + 1.9933 = 8.6058 -E(Trat2, Mujer) = beta_0_gorr +
+> beta_2_gorr + beta_5_gorr 12.3482 + (-4.2720) + 1.7816 = 9.8578
+
+## vi. Comparación del tratamiento nuevo
+
+> vi. Realice una prueba de hipótesis para argumentar en favor o en
+>     contra de la hipótesis: el nuevo tratamiento tiene el mejor
+>     desempeño. Use $\alpha$ = .05
+
+```{r bloque-10}
+library(multcomp)
+
+K_nt <- matrix(c(
+  0,  0,  1,  0,  0,  0,   #Trat2 - Control < 0  => beta_2 < 0
+  0, -1,  1,  0,  0,  0,   # Trat2 - Trat1 < 0    => beta_2 - beta_1 < 0
+  0,  0,  1, -1,  0,  1,   #Trat2 - Control < 0  => beta_2 - beta_3 + beta_5 < 0
+  0, -1,  1,  0, -1,  1    #Trat2 - Trat1 < 0    => beta_2 - beta_1 - beta_4 + beta_5 < 0
+), nrow = 4, byrow = TRUE)
+
+prueba_nt <- glht(fit_reducido, linfct = K_nt, alternative = "less")
+summary(prueba_nt)
+
+```
+
+> Para argumemntar si el nuevo tratamiento (Trat2) es el
+> mejor,comparamos si la esperanza de su puntaje de ansiedad contra el
+> grupo Control y contra el tratamiento actual que es el tratamiento 1
+>
+> Asi nuestras hipotesis se ven de la forma: H0: E(Trat2) \>= E(Trat1) o
+> E(Trat2) \>= E(Control) Ha: E(Trat2) \< E(Trat1) y E(Trat2) \<
+> E(Control) (Que el tratamiento 2 es mejor)
+>
+> Observando la salida de nuestro codigo notamos que en ambos sexos se
+> rechaza la igualdad por tener p-values de 1e-05 y de 7.35e-05, es dcir
+> se rechaza H0 y nos dice que el Trat2 es mejor que no tener
+> tratamiento Ahora los que se comparan con el tratamiento 1 los
+> p-values son de 1.000 tanto para hombre como para mujer y como pvalue
+> \> 0.05 NO se rechaza H0 y decimos que NO hay evidencia para decir que
+> el tratamiento 2 es mejor que el tratamiento 1
+
+## vii. Comparación del tratamiento actual
+
+> vii. Realice una prueba de hipótesis para argumentar en favor o en
+>      contra de la hipótesis: el tratamiento actual tiene el mejor
+>      desempeño. Use $\alpha$ = .05
+
+```{r bloque-11}
+K_actual <- matrix(c(
+  0,  1,  0,  0,  0,  0,   # Trat1 vs Control (Hombres): beta_1 < 0
+  0,  1, -1,  0,  0,  0,   # Trat1 vs Trat2 (Hombres): beta_1 - beta_2 < 0
+  0,  1,  0, -1,  1,  0,   # Trat1 vs Control (Mujeres): beta_1 - beta_3 + beta_4 < 0
+  0,  1, -1,  0,  1, -1    # Trat1 vs Trat2 (Mujeres): beta_1 - beta_2 + beta_4 - beta_5 < 0
+), nrow = 4, byrow = TRUE)
+
+prueba_actual <- glht(fit_reducido, linfct = K_actual, alternative = "less")
+summary(prueba_actual)
+
+```
+
+> Definimos las hipotesis para comprobar si el tratamiento actual
+> (Trat1) es el más eficaz para reducir la ansiedad: Asi definimos
+> nuestras hipotesis como: H0: E(Trat1) \>= E(Trat2) o E(Trat1) \>=
+> E(Control) Ha: E(Trat1) \< E(Trat2) y E(Trat1) \< E(Control) (Trat1 es
+> el mejor)
+>
+> Asi de la salida notamos que los p-values son \< 0.05, por lo que
+> rechazamos H0, es decir es plausible confirmar que el tratamiento
+> 1(actual) que se asocia con menores puntaje promedio de ansiedad en 
+> el grupo control. Por otro lado como todos los estimadores
+> de la diferencia son negativos (-5.73,-1.46, -3.50, -1.25),
+> entonces podemos decir que los puntajes de ansiedad todos son mas 
+> bajos y por ello representan un mejor resultado
+
+# Caso 2. Edad, tratamiento y generación de anticuerpos (ANCOVA)
+
+```{r bloque-12}
+rm(list = ls(all.names = TRUE))
+gc()
+
+datos <- read.csv("Tar2-5.csv")
+```
+
+> Ajustar ruta
+>
+> Cambiar la variable de tratamiento a factor y que el Control sea
+> nuestra categoría de referencia.
+
+```{r bloque-13}
+datos$Trat <- as.factor(datos$Trat)
+datos$Trat <- relevel(datos$Trat, ref = "Control") 
+
+```
+
+## i. Análisis descriptivo
+
+> i.  Análisis descriptivo
+
+```{r bloque-14}
+library(ggplot2)
+
+ggplot(datos, aes(x = Edad, y = Ant, color = Trat)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE) + 
+  labs(title = "Generación de anticuerpos por Edad y Tratamiento",
+       x = "Edad (años)",
+       y = "Total de Anticuerpos") +
+  theme_minimal()
+
+```
+
+> En el gráfico de dispersión podemos ver la relación entre la edad y la
+> cantidad de anticuerpos generados, al principio se nota una tendencia
+> lineal en ambos grupos y la línea de tendencia del grupo con
+> medicamento parece tener una inclinación mucho más reducida a la del
+> grupo control, lo que nos da una pista de que la edad podría estar
+> afectando de manera distinta dependiendo de si tomaron el medicamento
+> o no
+
+## ii. Ajuste del modelo con interacción
+
+> ii. Ajuste del modelo con interacción
+>
+> Ajustamos el modelo incluyendo la edad, el tratamiento y la
+> interacción entre ambos.
+
+```{r bloque-15}
+fit5 <- lm(Ant ~ Edad * Trat, data = datos)
+summary(fit5)
+
+```
+>
+> Ajustamos un modelo de Análisis de Covarianza (ANCOVA) que se ve así:
+> y_i = beta_0 + beta_1(Edad) + beta_2(Trat) + beta_3(Edad \* Trat) +
+> error, donde Trat = 0 si el paciente está en el grupo control y Trat =
+> 1 si recibió el medicamento
+
+## iii. Expresiones de la generación promedio
+
+> iii. Expresiones de la generación promedio
+>
+> Sabiendo que la esperanza del modelo es E(y), sacamos las expresiones
+> para cada grupo:
+>
+> a)  Para el grupo control (Trat = 0): E(y \| Trat=0) = beta_0 +
+>     beta_1(Edad) + beta_2(0) + beta_3(Edad\*0) E(y \| Trat=0) =
+>     beta_0 + beta_1(Edad)
+>
+> b)  Para el grupo que recibe el medicamento (Trat = 1): E(y \| Trat=1)
+>     = beta_0 + beta_1(Edad) + beta_2(1) + beta_3(Edad*1) E(y \|
+>     Trat=1) = (beta_0 + beta_2) + (beta_1 + beta_3)* Edad
+
+## iv. Comparación del efecto de la edad
+
+> iv. ¿La edad afecta de la misma forma en ambos grupos?
+>
+> Para saber si la edad afecta igual a ambos grupos, tenemos que revisar
+> si las pendientes de nuestras dos rectas son iguales. En términos de
+> nuestros parámetros, la hipótesis a contrastar es sobre el término de
+> interacción (beta_3):
+>
+> H0: beta_3 = 0 (Las pendientes son iguales, la edad afecta igual a
+> ambos grupos) Ha: beta_3 != 0 (Las pendientes son distintas, la edad
+> no afecta igual)
+>
+> Notese el p-value del término 'Edad:Trat' en el summary del modelo.
+> Como el p-value es menor a 0.05, rechazamos H0. Por lo tanto,
+> concluimos que la edad NO afecta de la misma forma a la generación de
+> anticuerpos en ambos grupos
+
+## v. Interpretación de coeficientes
+
+> v.  Interpretación de coeficientes
+>
+> Tomando como referencia al grupo Control, interpretamos las betas
+> estimadas así:
+>
+> beta_0 (Intercepto): Es el promedio esperado de anticuerpos para un
+> paciente del grupo control que tuviera 0 años. beta_1 (Edad):
+> Manteniendo el tratamiento en control como constante, por cada año que
+> aumenta la edad del paciente, se espera un cambio en los anticuerpos
+> de beta_1 unidades. beta_2 (Tratamiento): Es la diferencia promedio de
+> anticuerpos entre tomar el medicamento y no tomarlo, cuando el
+> paciente tiene exactamente 0 años. beta_3 (Interacción Edad:Trat):
+> Representa la diferencia entre las pendientes. Nos dice cuánto cambia
+> el efecto de la edad al haber tomado el medicamento en lugar del
+> placebo.
+
+## vi. Contrastes para edades de 30 a 60 años
+
+> vi. Argumento sobre pacientes entre 30 y 60 años
+
+```{r bloque-16}
+library(multcomp)
+
+```
+
+> La empresa dice que el medicamento sirve para CUALQUIER edad entre 30
+> y 60 y la diferencia (Efecto del medicamento) a una edad "x" es:
+> Efecto = beta_2 + beta_3(x) Si se prueba que el efecto es positivo
+> tanto en el límite inferior (30) y superior (60), entonces se cumple
+> para todo el rango.
+>
+> Matriz para evaluar la combinación lineal en las edades 30 y 60: (Las
+> columnas son: intercepto, Edad, Trat, Edad:Trat)
+
+```{r bloque-17}
+C <- matrix(c(
+  0, 0, 1, 30,  # Queremos probar si beta_2 + 30*beta_3 > 0
+  0, 0, 1, 60   # Queremos probar si beta_2 + 60*beta_3 > 0
+), nrow = 2, byrow = TRUE)
+rownames(C) <- c("Efecto a los 30 años", "Efecto a los 60 años")
+
+prueba_edades <- glht(fit5, linfct = C, alternative = "greater")
+summary(prueba_edades)
+
+```
+
+>
+> Al ver los p-valores ajustados para 30 y 60 años, dado que ambos son
+> menores al valor de 0.05, se concluye la afirmación de la empresa.
+> Tenemos evidencia estadística suficiente para asegurar que el medicamento 
+> aumenta el número de anticuerpos en los pacientes de ese rango de edad 
+>  
+
+## Gráficos adicionales y diagnósticos
+
+> Gráficos adicionales Gráfico 1: Bandas de Confianza
+>
+> Este grafico incluye bandas sombreadas que representan el intervalo de
+> confianza del 95% para la línea de tendencia.
+
+```{r bloque-18}
+grafico_banda <- ggplot(datos, aes(x = Edad, y = Ant, color = Trat, fill = Trat)) +
+  geom_point(size = 2, alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, alpha = 0.2) + 
+  labs(title = "Tendencia de Anticuerpos con Bandas de Confianza al 95%",
+       x = "Edad (años)",
+       y = "Total de Anticuerpos") +
+  theme_minimal()
+
+print(grafico_banda)
+
+```
+
+> Las bandas de confianza nos permiten observar el rango en el que se
+> encuentra la media poblacional
+>
+> Gráficos 2 a 5: Diagnóstico de Residuales
+>
+> En ANCOVA, para validar los supuestos de normalidad y homocedasticidad
+> se hicieron los siguentes gráficos:
+
+```{r bloque-19}
+par(mfrow = c(2, 2)) 
+
+```
+
+> 1.  Linealidad y Varianza
+> 2.  Normalidad de los errores
+> 3.  Homocedasticidad
+> 4.  Valores atípicos o influyentes
+
+```{r bloque-20}
+plot(fit5) 
+
+par(mfrow = c(1, 1))
+```
