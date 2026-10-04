@@ -20,3 +20,8 @@ La aplicación de herramientas para un análisis de diferencias entre grupos y l
 ## Resultados
 - Del primer ejercicio identifique las diferencias entre los tratamientos aplicados y conclui que el tratamiento 1 tiene mejores resultados pues se muestran menores puntajes de ansiedad al aplicar este tratamiento 
 - Para el segundo ejercicio después de analizar la relación entre la producción de anticuerpos debido a un medicamento con un rango de edad, concluimos que el medicamente aumenta la generación de anticuerpos en los pacientes en un rango de edad de 30 a 60 años
+## Archivos
+- Proyecto_3.Rmd: código y desarrollo
+- ANOVA,ANCOVA.pdf: reporte
+- Tar2-4A.csv: Base del primer ejercicio
+- Tar2-5.csv: Base del segundo ejercicio 
